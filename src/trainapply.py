@@ -19,6 +19,7 @@ from keras.callbacks import ModelCheckpoint
 from keras.utils import multi_gpu_model 
 
 # project imports
+import nibabel as nib
 import datagenerators
 import networks
 import losses
@@ -57,15 +58,23 @@ def train(data_dir,
     """
     
     # load atlas from provided files. The atlas we used is 160x192x224.
-    atlas_vol = np.load(atlas_file)['vol'][np.newaxis, ..., np.newaxis]
+    #oldatlas_vol = np.load('../data/atlas_norm.npz')['vol'][np.newaxis, ..., np.newaxis]
+    #oldmov = np.load('../data/test_vol.npz')['vol_data'][np.newaxis, ..., np.newaxis]
+    fix_nii = nib.load(atlas_file)
+    atlas_vol = fix_nii.get_data()[np.newaxis, ..., np.newaxis]
     vol_size = atlas_vol.shape[1:-1] 
     # prepare data files
     # for the CVPR and MICCAI papers, we have data arranged in train/validate/test folders
     # inside each folder is a /vols/ and a /asegs/ folder with the volumes
     # and segmentations. All of our papers use npz formated data.
-    train_vol_names = glob.glob(os.path.join(data_dir, '*.npz'))
+    #train_vol_names = glob.glob(os.path.join(data_dir, '*.npz'))
+    movingfile = 'mydata/dynamic.0000.nii.gz'
+    train_vol_names = [movingfile]
     random.shuffle(train_vol_names)  # shuffle volume list
-    assert len(train_vol_names) > 0, "Could not find any training data"
+    assert len(train_vol_names) == 1, "Could not find any training data"
+
+    mov_nii = nib.load(movingfile )
+    mov = mov_nii.get_data()[np.newaxis, ..., np.newaxis]
 
     # Diffeomorphic network architecture used in MICCAI 2018 paper
     nf_enc = [16,32,32,32]
@@ -144,6 +153,14 @@ def train(data_dir,
                                callbacks=[save_callback],
                                steps_per_epoch=steps_per_epoch,
                                verbose=1)
+        # register
+        [moved, warp] = model.predict([mov, atlas_vol ])
+
+    # output image
+    out_img= 'myout.nii.gz'
+    if out_img is not None:
+        img = nib.Nifti1Image(moved[0,...,0], mov_nii.affine)
+        nib.save(img, out_img)
 
 
 if __name__ == "__main__":
@@ -153,7 +170,7 @@ if __name__ == "__main__":
                         help="data folder")
 
     parser.add_argument("--atlas_file", type=str,
-                        dest="atlas_file", default='../data/atlas_norm.npz',
+                        dest="atlas_file", default='mydata/dynamic.0033.nii.gz',
                         help="gpu id number")
     parser.add_argument("--model_dir", type=str,
                         dest="model_dir", default='../models/',
@@ -163,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float,
                         dest="lr", default=1e-4, help="learning rate")
     parser.add_argument("--epochs", type=int,
-                        dest="nb_epochs", default=10,
+                        dest="nb_epochs", default=1,
                         help="number of iterations")
     parser.add_argument("--prior_lambda", type=float,
                         dest="prior_lambda", default=10,
@@ -188,4 +205,5 @@ if __name__ == "__main__":
                         help="first epoch")
 
     args = parser.parse_args()
+    print(args)
     train(**vars(args))

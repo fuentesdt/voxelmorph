@@ -48,6 +48,7 @@ def register(gpu_id, moving, fixed, model_file, out_img, out_warp):
     mov = mov_nii.get_data()[np.newaxis, ..., np.newaxis]
     fix_nii = nib.load(fixed)
     fix = fix_nii.get_data()[np.newaxis, ..., np.newaxis]
+    vol_size = fix.shape[1:-1] 
 
     with tf.device(gpu):
         # load model
@@ -61,11 +62,17 @@ def register(gpu_id, moving, fixed, model_file, out_img, out_warp):
                  'kl_loss': losses.Miccai2018(0.02, 10).kl_loss        # values shouldn't matter
                  }
 
+        # the MICCAI201 model takes in [image_1, image_2] and outputs [warped_image_1, velocity_stats]
+        # in these experiments, we use image_2 as atlas
+        nf_enc = [16,32,32,32]
+        nf_dec = [32,32,32,32,16,3]
+        model = networks.miccai2018_net(vol_size, nf_enc, nf_dec, bidir=0)
+        model.load_weights(model_file)
 
-        net = keras.models.load_model(model_file, custom_objects=custom_objects)
+        #net = keras.models.load_weights(model_file, custom_objects=custom_objects)
 
         # register
-        [moved, warp] = net.predict([mov, fix])
+        [moved, warp] = model.predict([mov, fix])
 
     # output image
     if out_img is not None:

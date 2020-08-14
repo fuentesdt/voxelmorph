@@ -34,7 +34,7 @@ If you'd like to run the CVPR version (no diffeomorphism or uncertainty measures
 1. Change the top parameters in `train_miccai2018.py` to the location of your image files.
 2. Run `train_miccai2018.py` with options described in the main function at the bottom of the file. Example:  
 ```
-train_miccai2018.py /my/path/to/data --gpu 0 --model_dir /my/path/to/save/models 
+train_miccai2018.py mydata --gpu 1 --model_dir mymodels 
 ```
 
 In our experiments, `/my/path/to/data` contains one `npz` file for each subject saved in the variable `vol_data`.
@@ -51,7 +51,10 @@ If you simply want to register two images:
 1. Choose the appropriate model, or train your own.
 2. Use `register.py`. For example, Let's say we have a model trained to register subject (moving) to atlas (fixed). One could run:
 ```
-python register.py --gpu 0 /path/to/test_vol.nii.gz /path/to/atlas_norm.nii.gz --out_img /path/to/out.nii.gz --model_file ../models/cvpr2018_vm2_cc.h5 
+python register.py --gpu 1 /path/to/test_vol.nii.gz /path/to/atlas_norm.nii.gz --out_img /path/to/out.nii.gz --model_file ../models/cvpr2018_vm2_cc.h5 
+python register.py --gpu 1  ../data/test_vol.nii.gz  ../data/atlas_norm.nii.gz  --out_img myout.nii.gz --model_file mymodels/10.h5   --out_warp mywarp.nii.gz
+
+
 ```
 ## Parameter choices
 
