@@ -15,17 +15,91 @@ import tensorflow as tf
 import numpy as np
 from keras.backend.tensorflow_backend import set_session
 from keras.optimizers import Adam
+# tensor callbacks
 from keras.callbacks import ModelCheckpoint
+from keras.callbacks import TensorBoard
 from keras.utils import multi_gpu_model 
 
 # project imports
 import nibabel as nib
-import datagenerators
 import networks
 import losses
 
 sys.path.append('../ext/neuron')
 import neuron.callbacks as nrn_gen
+
+def load_volfile(datafile, np_var='vol_data'):
+    """
+    load volume file
+    formats: nii, nii.gz, mgz, npz
+    if it's a npz (compressed numpy), variable names innp_var (default: 'vol_data')
+    """
+    assert datafile.endswith(('.nii', '.nii.gz', '.mgz', '.npz')), 'Unknown data file'
+
+    if datafile.endswith(('.nii', '.nii.gz', '.mgz')):
+        X = nib.load(datafile).get_data()
+        
+    else: # npz
+        if np_var is None:
+            np_var = 'vol_data'
+        X = np.load(datafile)[np_var]
+
+    return X
+def datageneratorsmiccai2018_gen(gen, atlas_vol_bs, batch_size=1, bidir=False):
+    """ generator used for miccai 2018 model """
+    volshape = atlas_vol_bs.shape[1:-1]
+    zeros = np.zeros((batch_size, *volshape, len(volshape)))
+    while True:
+        X = next(gen)[0]
+        if bidir:
+            yield ([X, atlas_vol_bs], [atlas_vol_bs, X, zeros])
+        else:
+            yield ([X, atlas_vol_bs], [atlas_vol_bs, zeros])
+
+
+def datageneratorsexample_gen(vol_names, batch_size=1, return_segs=False, seg_dir=None, np_var='vol_data'):
+    """
+    generate examples
+
+    Parameters:
+        vol_names: a list or tuple of filenames
+        batch_size: the size of the batch (default: 1)
+
+        The following are fairly specific to our data structure, please change to your own
+        return_segs: logical on whether to return segmentations
+        seg_dir: the segmentations directory.
+        np_var: specify the name of the variable in numpy files, if your data is stored in 
+            npz files. default to 'vol_data'
+    """
+
+    while True:
+        idxes = np.random.randint(len(vol_names), size=batch_size)
+
+        X_data = []
+        for idx in idxes:
+            X = load_volfile(vol_names[idx], np_var=np_var)
+            X = X[np.newaxis, ..., np.newaxis]
+            X_data.append(X)
+
+        if batch_size > 1:
+            return_vals = [np.concatenate(X_data, 0)]
+        else:
+            return_vals = [X_data[0]]
+
+        # also return segmentations
+        if return_segs:
+            X_data = []
+            for idx in idxes:
+                X_seg = load_volfile(vol_names[idx].replace('norm', 'aseg'), np_var=np_var)
+                X_seg = X_seg[np.newaxis, ..., np.newaxis]
+                X_data.append(X_seg)
+            
+            if batch_size > 1:
+                return_vals.append(np.concatenate(X_data, 0))
+            else:
+                return_vals.append(X_data[0])
+
+        yield tuple(return_vals)
 
 
 def train(data_dir,
@@ -115,6 +189,9 @@ def train(data_dir,
         else:
             model_losses = [loss_class.recon_loss, loss_class.kl_loss]
             loss_weights = [1, 1]
+        #loss_class = losses.NCC()
+        #model_losses = loss_class.ncc
+        #loss_weights = 1
         
     
     # data generator
@@ -123,9 +200,9 @@ def train(data_dir,
         'batch_size should be a multiple of the nr. of gpus. ' + \
         'Got batch_size %d, %d gpus' % (batch_size, nb_gpus)
 
-    train_example_gen = datagenerators.example_gen(train_vol_names, batch_size=batch_size)
+    train_example_gen = datageneratorsexample_gen(train_vol_names, batch_size=batch_size)
     atlas_vol_bs = np.repeat(atlas_vol, batch_size, axis=0)
-    miccai2018_gen = datagenerators.miccai2018_gen(train_example_gen,
+    miccai2018_gen = datageneratorsmiccai2018_gen(train_example_gen,
                                                    atlas_vol_bs,
                                                    batch_size=batch_size,
                                                    bidir=bidir)
@@ -144,17 +221,19 @@ def train(data_dir,
         # single gpu
         else:
             save_callback = ModelCheckpoint(save_file_name)
+            # tensorboard --logdir='mylog' --port=6010
+            tensorboard = TensorBoard(log_dir='mylog', histogram_freq=0, write_graph=True, write_images=False)
             mg_model = model
 
         mg_model.compile(optimizer=Adam(lr=lr), loss=model_losses, loss_weights=loss_weights)
         mg_model.fit_generator(miccai2018_gen, 
                                initial_epoch=initial_epoch,
                                epochs=nb_epochs,
-                               callbacks=[save_callback],
+                               callbacks=[tensorboard,save_callback],
                                steps_per_epoch=steps_per_epoch,
                                verbose=1)
         # register
-        [moved, warp] = model.predict([mov, atlas_vol ])
+        [moved, warp] = mg_model.predict([mov, atlas_vol ])
 
     # output image
     out_img= 'myout.nii.gz'
@@ -180,7 +259,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float,
                         dest="lr", default=1e-4, help="learning rate")
     parser.add_argument("--epochs", type=int,
-                        dest="nb_epochs", default=1,
+                        dest="nb_epochs", default=100,
                         help="number of iterations")
     parser.add_argument("--prior_lambda", type=float,
                         dest="prior_lambda", default=10,
@@ -195,7 +274,7 @@ if __name__ == "__main__":
                         dest="batch_size", default=1,
                         help="batch_size")
     parser.add_argument("--load_model_file", type=str,
-                        dest="load_model_file", default='../models/miccai2018_10_02_init1.h5',
+                        dest="load_model_file", default=None,
                         help="optional h5 model file to initialize with")
     parser.add_argument("--bidir", type=int,
                         dest="bidir", default=0,
