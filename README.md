@@ -35,6 +35,9 @@ If you'd like to run the CVPR version (no diffeomorphism or uncertainty measures
 2. Run `train_miccai2018.py` with options described in the main function at the bottom of the file. Example:  
 ```
 train_miccai2018.py mydata --gpu 1 --model_dir mymodels 
+motion.py /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/ --gpu 1 --model_dir mymodels 
+
+
 ```
 
 In our experiments, `/my/path/to/data` contains one `npz` file for each subject saved in the variable `vol_data`.
