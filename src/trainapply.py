@@ -56,6 +56,21 @@ def datageneratorsmiccai2018_gen(gen, atlas_vol_bs, batch_size=1, bidir=False):
         else:
             yield ([X, atlas_vol_bs], [atlas_vol_bs, zeros])
 
+def miccai2018_gen_s2s(moving, fixed, batch_size=1, bidir=False):
+    """ generator used for miccai 2018 model """
+    zeros = None
+    while True:
+        X = moving
+        Y = fixed
+        if zeros is None:
+            volshape = X.shape[1:-1]
+            zeros = np.zeros((batch_size, *volshape, len(volshape)))
+        if bidir:
+            yield ([X, Y], [Y, X, zeros])
+        else:
+            yield ([X, Y], [Y, zeros])
+
+
 
 def datageneratorsexample_gen(vol_names, batch_size=1, return_segs=False, seg_dir=None, np_var='vol_data'):
     """
@@ -102,8 +117,7 @@ def datageneratorsexample_gen(vol_names, batch_size=1, return_segs=False, seg_di
         yield tuple(return_vals)
 
 
-def train(data_dir,
-          atlas_file,
+def train(atlas_file,
           model_dir,
           gpu_id,
           lr,
@@ -200,10 +214,10 @@ def train(data_dir,
         'batch_size should be a multiple of the nr. of gpus. ' + \
         'Got batch_size %d, %d gpus' % (batch_size, nb_gpus)
 
-    train_example_gen = datageneratorsexample_gen(train_vol_names, batch_size=batch_size)
-    atlas_vol_bs = np.repeat(atlas_vol, batch_size, axis=0)
-    miccai2018_gen = datageneratorsmiccai2018_gen(train_example_gen,
-                                                   atlas_vol_bs,
+    #train_example_gen = datageneratorsexample_gen(train_vol_names, batch_size=batch_size)
+    #atlas_vol_bs = np.repeat(atlas_vol, batch_size, axis=0)
+    miccai2018_gen = miccai2018_gen_s2s(mov ,
+                                                   atlas_vol ,
                                                    batch_size=batch_size,
                                                    bidir=bidir)
 
@@ -245,21 +259,18 @@ def train(data_dir,
 if __name__ == "__main__":
     parser = ArgumentParser()
 
-    parser.add_argument("data_dir", type=str,
-                        help="data folder")
-
     parser.add_argument("--atlas_file", type=str,
                         dest="atlas_file", default='mydata/dynamic.0033.nii.gz',
                         help="gpu id number")
     parser.add_argument("--model_dir", type=str,
-                        dest="model_dir", default='../models/',
+                        dest="model_dir", default='s2smodels/',
                         help="models folder")
-    parser.add_argument("--gpu", type=str, default=0,
+    parser.add_argument("--gpu", type=str, default='0',
                         dest="gpu_id", help="gpu id number")
     parser.add_argument("--lr", type=float,
                         dest="lr", default=1e-4, help="learning rate")
     parser.add_argument("--epochs", type=int,
-                        dest="nb_epochs", default=100,
+                        dest="nb_epochs", default=500,
                         help="number of iterations")
     parser.add_argument("--prior_lambda", type=float,
                         dest="prior_lambda", default=10,

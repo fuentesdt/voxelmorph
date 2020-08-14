@@ -35,7 +35,7 @@ def load_volfile(datafile, np_var='vol_data'):
     assert datafile.endswith(('.nii', '.nii.gz', '.mgz', '.npz')), 'Unknown data file'
 
     if datafile.endswith(('.nii', '.nii.gz', '.mgz')):
-        print(datafile)
+        #print(datafile)
         X = nib.load(datafile).get_data()
         
     else: # npz
