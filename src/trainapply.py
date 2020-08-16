@@ -56,15 +56,11 @@ def datageneratorsmiccai2018_gen(gen, atlas_vol_bs, batch_size=1, bidir=False):
         else:
             yield ([X, atlas_vol_bs], [atlas_vol_bs, zeros])
 
-def miccai2018_gen_s2s(moving, fixed, batch_size=1, bidir=False):
+def miccai2018_gen_s2s(moving, fixed, zeros,batch_size=1, bidir=False):
     """ generator used for miccai 2018 model """
-    zeros = None
     while True:
         X = moving
         Y = fixed
-        if zeros is None:
-            volshape = X.shape[1:-1]
-            zeros = np.zeros((batch_size, *volshape, len(volshape)))
         if bidir:
             yield ([X, Y], [Y, X, zeros])
         else:
@@ -151,6 +147,7 @@ def train(atlas_file,
     fix_nii = nib.load(atlas_file)
     atlas_vol = fix_nii.get_data()[np.newaxis, ..., np.newaxis]
     vol_size = atlas_vol.shape[1:-1] 
+    myzeros  = np.zeros((batch_size, *vol_size, len(vol_size)))
     # prepare data files
     # for the CVPR and MICCAI papers, we have data arranged in train/validate/test folders
     # inside each folder is a /vols/ and a /asegs/ folder with the volumes
@@ -201,11 +198,15 @@ def train(atlas_file,
             model_losses = [loss_class.recon_loss, loss_class.recon_loss, loss_class.kl_loss]
             loss_weights = [0.5, 0.5, 1]
         else:
-            model_losses = [loss_class.recon_loss, loss_class.kl_loss]
+            #model_losses = [loss_class.recon_loss, loss_class.kl_loss]
+            model_losses = [ losses.NCC().loss   , losses.Grad('l2').loss]
             loss_weights = [1, 1]
-        #loss_class = losses.NCC()
-        #model_losses = loss_class.ncc
-        #loss_weights = 1
+        #tf_mov   = tf.constant(mov)
+        #tf_fix   = tf.constant(atlas_vol)
+        #tf_zeros = tf.constant(myzeros)
+        tf_mov   = mov
+        tf_fix   = atlas_vol
+        tf_zeros = myzeros
         
     
     # data generator
@@ -216,8 +217,7 @@ def train(atlas_file,
 
     #train_example_gen = datageneratorsexample_gen(train_vol_names, batch_size=batch_size)
     #atlas_vol_bs = np.repeat(atlas_vol, batch_size, axis=0)
-    miccai2018_gen = miccai2018_gen_s2s(mov ,
-                                                   atlas_vol ,
+    miccai2018_gen = miccai2018_gen_s2s(tf_mov , tf_fix ,tf_zeros ,
                                                    batch_size=batch_size,
                                                    bidir=bidir)
 
@@ -235,8 +235,8 @@ def train(atlas_file,
         # single gpu
         else:
             save_callback = ModelCheckpoint(save_file_name)
-            # tensorboard --logdir='mylog' --port=6010
-            tensorboard = TensorBoard(log_dir='mylog', histogram_freq=0, write_graph=True, write_images=False)
+            # tensorboard --logdir='s2slog' --port=6010
+            tensorboard = TensorBoard(log_dir='s2slog', histogram_freq=0, write_graph=True, write_images=False)
             mg_model = model
 
         mg_model.compile(optimizer=Adam(lr=lr), loss=model_losses, loss_weights=loss_weights)
@@ -268,7 +268,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", type=str, default='0',
                         dest="gpu_id", help="gpu id number")
     parser.add_argument("--lr", type=float,
-                        dest="lr", default=1e-4, help="learning rate")
+                        dest="lr", default=1e-6, help="learning rate")
     parser.add_argument("--epochs", type=int,
                         dest="nb_epochs", default=500,
                         help="number of iterations")

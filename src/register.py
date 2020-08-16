@@ -64,9 +64,12 @@ def register(gpu_id, moving, fixed, model_file, out_img, out_warp):
 
         # the MICCAI201 model takes in [image_1, image_2] and outputs [warped_image_1, velocity_stats]
         # in these experiments, we use image_2 as atlas
-        nf_enc = [16,32,32,32]
-        nf_dec = [32,32,32,32,16,3]
-        model = networks.miccai2018_net(vol_size, nf_enc, nf_dec, bidir=0)
+        ## nf_enc = [16,32,32,32]
+        ## nf_dec = [32,32,32,32,16,3]
+        ## model = networks.miccai2018_net(vol_size, nf_enc, nf_dec, bidir=0)
+        nf_enc = [16, 32, 32, 32]
+        nf_dec = [32, 32, 32, 32, 32, 16, 16]
+        model = networks.cvpr2018_net(vol_size, nf_enc, nf_dec)
         model.load_weights(model_file)
 
         #net = keras.models.load_weights(model_file, custom_objects=custom_objects)

@@ -57,6 +57,9 @@ If you simply want to register two images:
 python register.py --gpu 1 /path/to/test_vol.nii.gz /path/to/atlas_norm.nii.gz --out_img /path/to/out.nii.gz --model_file ../models/cvpr2018_vm2_cc.h5 
 python register.py --gpu 1  ../data/test_vol.nii.gz  ../data/atlas_norm.nii.gz  --out_img myout.nii.gz --model_file mymodels/10.h5   --out_warp mywarp.nii.gz
 
+python register.py --gpu 1 /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/dynamic.0000.nii.gz /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/dynamic.0033.nii.gz --out_img mydata/mydynamic.0000.nii.gz --model_file mymodels/1430.h5
+
+
 
 ```
 ## Parameter choices
