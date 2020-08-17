@@ -270,7 +270,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float,
                         dest="lr", default=1e-6, help="learning rate")
     parser.add_argument("--epochs", type=int,
-                        dest="nb_epochs", default=500,
+                        dest="nb_epochs", default=1500,
                         help="number of iterations")
     parser.add_argument("--prior_lambda", type=float,
                         dest="prior_lambda", default=10,

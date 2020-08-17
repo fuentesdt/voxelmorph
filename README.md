@@ -36,6 +36,7 @@ If you'd like to run the CVPR version (no diffeomorphism or uncertainty measures
 ```
 train_miccai2018.py mydata --gpu 1 --model_dir mymodels 
 motion.py /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/ --gpu 1 --model_dir mymodels 
+motion.py /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/ --gpu 1 --model_dir mymodels  --load_model_file  mymodels/1500.h5 
 
 
 ```
@@ -57,7 +58,10 @@ If you simply want to register two images:
 python register.py --gpu 1 /path/to/test_vol.nii.gz /path/to/atlas_norm.nii.gz --out_img /path/to/out.nii.gz --model_file ../models/cvpr2018_vm2_cc.h5 
 python register.py --gpu 1  ../data/test_vol.nii.gz  ../data/atlas_norm.nii.gz  --out_img myout.nii.gz --model_file mymodels/10.h5   --out_warp mywarp.nii.gz
 
-python register.py --gpu 1 /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/dynamic.0000.nii.gz /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/dynamic.0033.nii.gz --out_img mydata/mydynamic.0000.nii.gz --model_file mymodels/1430.h5
+
+for idfile in 1430 1500 1501 1502 1505 1518 1557 1725 1749 2486 2541 ; do echo $idfile; python register.py --gpu 0 /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/dynamic.0000.nii.gz /rsrch1/ip/dtfuentes/github/ctperfusion/Processed/0004/dynamic.0033.nii.gz --out_img mydata/mydynamic.0000.$idfile.nii.gz --model_file mymodels/$idfile.h5; done
+
+
 
 
 

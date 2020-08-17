@@ -111,7 +111,7 @@ def train(data_dir,
           batch_size,
           load_model_file,
           data_loss,
-          initial_epoch=0):
+          initial_epoch=1500):
     """
     model training function
     :param data_dir: folder with npz files for each subject.
@@ -184,7 +184,7 @@ def train(data_dir,
             model.load_weights(load_model_file)
 
         # save first iteration
-        model.save(os.path.join(model_dir, '%02d.h5' % initial_epoch))
+        model.save(os.path.join(model_dir, '%04d.h5' % initial_epoch))
 
     # data generator
     nb_gpus = len(gpu_id.split(','))
@@ -197,7 +197,7 @@ def train(data_dir,
     cvpr2018_gen = datagenerators_cvpr2018_gen(train_example_gen, atlas_vol_bs, batch_size=batch_size)
 
     # prepare callbacks
-    save_file_name = os.path.join(model_dir, '{epoch:02d}.h5')
+    save_file_name = os.path.join(model_dir, '{epoch:04d}.h5')
 
     # fit generator
     with tf.device(gpu):
@@ -209,7 +209,7 @@ def train(data_dir,
         
         # single-gpu
         else:
-            save_callback = ModelCheckpoint(save_file_name)
+            save_callback = ModelCheckpoint(save_file_name,monitor='loss',mode='min',save_best_only=True)
             # tensorboard --logdir='mylog' --port=6010
             tensorboard = TensorBoard(log_dir='mylog', histogram_freq=0, write_graph=True, write_images=False)
             mg_model = model
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float,
                         dest="lr", default=1e-4, help="learning rate")
     parser.add_argument("--epochs", type=int,
-                        dest="nb_epochs", default=1500,
+                        dest="nb_epochs", default=5000,
                         help="number of iterations")
     parser.add_argument("--lambda", type=float,
                         dest="reg_param", default=1.0,  # recommend 1.0 for ncc, 0.01 for mse
